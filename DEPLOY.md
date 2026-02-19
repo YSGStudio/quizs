@@ -176,6 +176,8 @@ CLI 사용 시에도 Railway 대시보드에서 해당 서비스의 **Root Direc
 
 재배포 후 로그에 `Database connected, store loaded.` 가 보이면 DB 연동이 된 것입니다. 이제 방/문제/답변/참여도가 PostgreSQL에 저장되며, 재시작 후에도 유지됩니다.
 
+- **기존 데이터(localStorage 등)를 Railway DB로 옮기기**: [MIGRATION.md](./MIGRATION.md) 참고.
+
 #### DB 없을 때
 
 - `DATABASE_URL`이 없으면 이전처럼 **메모리만** 사용합니다. 재시작 시 데이터는 초기화됩니다.
@@ -186,12 +188,16 @@ CLI 사용 시에도 Railway 대시보드에서 해당 서비스의 **Root Direc
 
 ---
 
-## 3. (선택) 프론트에서 백엔드 연동
+## 3. 프론트에서 백엔드(DB) 연동
 
-백엔드 URL을 쓰려면 프론트 빌드 시 API 주소를 넣어야 합니다.
+프론트엔드는 **`VITE_API_URL`** 이 있으면 Railway API를 통해 DB에서 데이터를 불러오고, 변경 시 DB에 저장합니다. 없으면 기존처럼 localStorage만 사용합니다.
+
+### 설정 방법
 
 1. Vercel 프로젝트 **Settings** → **Environment Variables**
-2. `VITE_API_URL` = `https://your-railway-app.up.railway.app` 추가
-3. 프론트엔드 코드에서 `import.meta.env.VITE_API_URL`이 있으면 해당 URL로 API 호출하도록 구현 후, 재배포
+2. **Name**: `VITE_API_URL`  
+   **Value**: `https://여기Railway백엔드주소.up.railway.app` (끝에 슬래시 없이)
+3. **Production / Preview / Development** 중 필요한 환경 체크 후 저장
+4. **Redeploy** 실행 (변수 추가·수정 후 반드시 재배포해야 반영됨)
 
-현재 앱은 API 연동 없이 localStorage만 사용하므로, 위 단계는 나중에 API를 붙일 때 적용하면 됩니다.
+이후 배포된 사이트에서는 모든 사용자가 **같은 DB 데이터**를 보게 되며, 방/문제/답변/참여도가 Railway PostgreSQL에 저장됩니다.

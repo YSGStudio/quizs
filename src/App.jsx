@@ -9,6 +9,8 @@ const STORAGE_KEY_ROOMS = 'askanswer_rooms'
 const STORAGE_KEY_QUESTIONS = 'askanswer_roomQuestionsByCode'
 const STORAGE_KEY_PARTICIPATION = 'askanswer_participationByRoomCode'
 
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
+
 function loadFromStorage(key, fallback) {
   try {
     const s = localStorage.getItem(key)
@@ -26,36 +28,73 @@ function saveToStorage(key, value) {
   }
 }
 
+async function fetchStore() {
+  const res = await fetch(`${API_URL}/api/data`)
+  if (!res.ok) throw new Error('API load failed')
+  return res.json()
+}
+
+async function saveStoreToApi(store) {
+  const res = await fetch(`${API_URL}/api/data`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(store)
+  })
+  if (!res.ok) throw new Error('API save failed')
+}
+
 // 방 코드별 학생들이 만든 문제 목록 (같은 코드 = 같은 방 = 같은 데이터)
 // 형식: { [roomCode]: [ { id, content, studentName }, ... ] }
 function App() {
   const [screen, setScreen] = useState('login')
-  const [rooms, setRooms] = useState(() => loadFromStorage(STORAGE_KEY_ROOMS, []))
+  const [apiReady, setApiReady] = useState(!API_URL)
+  const [rooms, setRooms] = useState(() => (API_URL ? [] : loadFromStorage(STORAGE_KEY_ROOMS, [])))
   const [selectedRoom, setSelectedRoom] = useState(null)
   const [studentRoomCode, setStudentRoomCode] = useState('')
   const [studentName, setStudentName] = useState('')
   const [roomQuestionsByCode, setRoomQuestionsByCode] = useState(() =>
-    loadFromStorage(STORAGE_KEY_QUESTIONS, {})
+    API_URL ? {} : loadFromStorage(STORAGE_KEY_QUESTIONS, {})
   )
-  // 방별 학생 참여도: { [roomCode]: { [studentName]: number } }
   const [participationByRoomCode, setParticipationByRoomCode] = useState(() =>
-    loadFromStorage(STORAGE_KEY_PARTICIPATION, {})
+    API_URL ? {} : loadFromStorage(STORAGE_KEY_PARTICIPATION, {})
   )
 
-  // 교사 방 목록 저장
+  // API 사용 시: 앱 로드 시 DB에서 데이터 불러오기
   useEffect(() => {
+    if (!API_URL) return
+    fetchStore()
+      .then((data) => {
+        setRooms(data.rooms ?? [])
+        setRoomQuestionsByCode(data.roomQuestionsByCode ?? {})
+        setParticipationByRoomCode(data.participationByRoomCode ?? {})
+      })
+      .catch((e) => console.error('API load error:', e))
+      .finally(() => setApiReady(true))
+  }, [])
+
+  // localStorage 저장 (API 없을 때)
+  useEffect(() => {
+    if (API_URL) return
     saveToStorage(STORAGE_KEY_ROOMS, rooms)
   }, [rooms])
 
-  // 방별 문제 목록 저장
   useEffect(() => {
+    if (API_URL) return
     saveToStorage(STORAGE_KEY_QUESTIONS, roomQuestionsByCode)
   }, [roomQuestionsByCode])
 
-  // 방별 참여도 저장
   useEffect(() => {
+    if (API_URL) return
     saveToStorage(STORAGE_KEY_PARTICIPATION, participationByRoomCode)
   }, [participationByRoomCode])
+
+  // API 사용 시: 데이터 변경될 때마다 DB에 저장
+  useEffect(() => {
+    if (!API_URL || !apiReady) return
+    saveStoreToApi({ rooms, roomQuestionsByCode, participationByRoomCode }).catch((e) =>
+      console.error('API save error:', e)
+    )
+  }, [API_URL, apiReady, rooms, roomQuestionsByCode, participationByRoomCode])
 
   const handleTeacherSuccess = () => {
     setScreen('teacher')
@@ -69,9 +108,11 @@ function App() {
   }
 
   const handleSelectRoom = (room) => {
-    // 다른 탭/세션에서 학생이 추가한 문제를 반영하기 위해 localStorage 최신 데이터 병합
-    const stored = loadFromStorage(STORAGE_KEY_QUESTIONS, {})
-    setRoomQuestionsByCode((prev) => ({ ...prev, ...stored }))
+    // API 미사용 시에만 localStorage 병합 (API 사용 시에는 새로고침으로 최신화)
+    if (!API_URL) {
+      const stored = loadFromStorage(STORAGE_KEY_QUESTIONS, {})
+      setRoomQuestionsByCode((prev) => ({ ...prev, ...stored }))
+    }
     setSelectedRoom(room)
     setScreen('room')
   }
@@ -173,12 +214,31 @@ function App() {
     : []
 
   const handleRefresh = () => {
-    setRooms(loadFromStorage(STORAGE_KEY_ROOMS, []))
-    setRoomQuestionsByCode(loadFromStorage(STORAGE_KEY_QUESTIONS, {}))
-    setParticipationByRoomCode(loadFromStorage(STORAGE_KEY_PARTICIPATION, {}))
+    if (API_URL) {
+      fetchStore()
+        .then((data) => {
+          setRooms(data.rooms ?? [])
+          setRoomQuestionsByCode(data.roomQuestionsByCode ?? {})
+          setParticipationByRoomCode(data.participationByRoomCode ?? {})
+        })
+        .catch((e) => console.error('API load error:', e))
+    } else {
+      setRooms(loadFromStorage(STORAGE_KEY_ROOMS, []))
+      setRoomQuestionsByCode(loadFromStorage(STORAGE_KEY_QUESTIONS, {}))
+      setParticipationByRoomCode(loadFromStorage(STORAGE_KEY_PARTICIPATION, {}))
+    }
   }
 
   const showRefresh = screen !== 'login'
+
+  // API 사용 시 초기 로딩
+  if (API_URL && !apiReady) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#888' }}>로딩 중...</p>
+      </div>
+    )
+  }
 
   return (
     <>
