@@ -1,0 +1,8 @@
+# Railway 배포 시 이 파일이 있는 backend 폴더를 루트로 지정하세요.
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm start"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

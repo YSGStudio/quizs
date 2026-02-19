@@ -1,0 +1,43 @@
+#root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.app-refresh-btn {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: #646cff;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.app-refresh-icon {
+  display: block;
+}
+
+.app-refresh-btn:hover {
+  background: #535bf2;
+}
+
+@media (prefers-color-scheme: light) {
+  .app-refresh-btn {
+    background: #535bf2;
+  }
+
+  .app-refresh-btn:hover {
+    background: #434bf2;
+  }
+}
