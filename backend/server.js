@@ -3,9 +3,12 @@ import cors from 'cors'
 import { initDb, loadStore, saveStore, useDb } from './db.js'
 
 const app = express()
+app.use(cors({
+  origin: 'https://quizs-production.up.railway.app',
+  credentials: true
+}))
 const PORT = process.env.PORT || 3001
 
-app.use(cors())
 app.use(express.json({ limit: '1mb' }))
 
 // DB 사용 시 DB에서 로드, 아니면 메모리
